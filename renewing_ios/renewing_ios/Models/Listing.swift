@@ -1,6 +1,6 @@
 import Foundation
 
-struct Listing: Codable, Identifiable {
+struct Listing: Codable, Identifiable, Hashable {
     let id: String
     let userId: String
     let title: String

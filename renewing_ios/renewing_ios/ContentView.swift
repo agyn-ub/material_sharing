@@ -31,8 +31,21 @@ struct ContentView: View {
         }
     }
 
+    private var tabSelection: Binding<Int> {
+        Binding(
+            get: { selectedTab },
+            set: { newValue in
+                if newValue == 1 {
+                    showCreateListing = true
+                } else {
+                    selectedTab = newValue
+                }
+            }
+        )
+    }
+
     private var mainTabView: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: tabSelection) {
             ListingsListView()
                 .tabItem {
                     Label("Рядом", systemImage: "location.magnifyingglass")
@@ -54,12 +67,6 @@ struct ContentView: View {
         .tint(Color.matshareOrange)
         .sheet(isPresented: $showCreateListing) {
             CreateListingView()
-        }
-        .onChange(of: selectedTab) { tab in
-            if tab == 1 {
-                showCreateListing = true
-                selectedTab = 0
-            }
         }
     }
 }
