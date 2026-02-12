@@ -1,0 +1,16 @@
+# Node
+node_modules/
+.env
+
+# iOS
+*.xcuserdata/
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcshareddata/swiftpm/
+.build/
+
+# OS
+.DS_Store
+
+# Supabase
+supabase/.temp/
