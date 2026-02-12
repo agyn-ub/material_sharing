@@ -24,6 +24,14 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+app.get('/debug-paths', (req, res) => {
+  const fs = require('fs');
+  const publicDir = path.join(__dirname, '..', 'public');
+  let files = [];
+  try { files = fs.readdirSync(publicDir); } catch (e) { files = [e.message]; }
+  res.json({ cwd: process.cwd(), dirname: __dirname, publicDir, files });
+});
+
 app.use('/api/listings', listingsRoutes);
 app.use('/api/users', usersRoutes);
 
