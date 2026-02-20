@@ -6,22 +6,10 @@ struct ListingCardView: View {
     var body: some View {
         HStack(spacing: 12) {
             // Photo
-            AsyncImage(url: listing.firstThumbnailURL ?? listing.firstPhotoURL) { phase in
-                switch phase {
-                case .success(let image):
-                    image
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                case .failure:
-                    Image(systemName: "photo")
-                        .foregroundStyle(.secondary)
-                default:
-                    Color(.systemGray5)
-                }
-            }
-            .frame(width: 80, height: 80)
-            .cornerRadius(10)
-            .clipped()
+            RemoteImage(url: listing.firstThumbnailURL, fallbackURL: listing.firstPhotoURL)
+                .frame(width: 80, height: 80)
+                .cornerRadius(10)
+                .clipped()
 
             // Info
             VStack(alignment: .leading, spacing: 4) {

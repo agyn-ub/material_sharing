@@ -12,21 +12,7 @@ struct PhotoViewerView: View {
 
             TabView(selection: $currentIndex) {
                 ForEach(Array(urls.enumerated()), id: \.offset) { index, urlString in
-                    AsyncImage(url: URL(string: urlString)) { phase in
-                        switch phase {
-                        case .success(let image):
-                            image
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                        case .failure:
-                            Image(systemName: "photo")
-                                .font(.largeTitle)
-                                .foregroundStyle(.white.opacity(0.5))
-                        default:
-                            ProgressView()
-                                .tint(.white)
-                        }
-                    }
+                    RemoteImage(url: URL(string: urlString), contentMode: .fit)
                     .tag(index)
                 }
             }

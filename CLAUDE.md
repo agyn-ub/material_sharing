@@ -40,7 +40,7 @@ Standard Express MVC pattern:
 
 - `server.js` — Entry point. Mounts routes at `/api/listings` and `/api/users`
 - `config/db.js` — PostgreSQL connection pool using `pg`, connects to Supabase Postgres with SSL in production
-- `middleware/auth.js` — JWT verification using `SUPABASE_JWT_SECRET` (HS256). Attaches `req.user.id` (from JWT `sub`) and `req.user.email`
+- `middleware/auth.js` — JWT verification using JWKS (ES256 public keys fetched from Supabase). Attaches `req.user.id` (from JWT `sub`) and `req.user.email`
 - `controllers/listingsController.js` — All listing logic: nearby search via PostGIS `search_listings_nearby()` SQL function, CRUD with ownership checks
 - `controllers/usersController.js` — Profile upsert (INSERT...ON CONFLICT), get own profile, get public profile
 - `routes/` — Thin route files, all routes require auth middleware
@@ -89,5 +89,4 @@ PORT=3000
 DATABASE_URL=postgresql://...
 SUPABASE_URL=https://[project-ref].supabase.co
 SUPABASE_SERVICE_KEY=...
-SUPABASE_JWT_SECRET=...
 ```

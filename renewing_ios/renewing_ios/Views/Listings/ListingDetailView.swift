@@ -12,20 +12,7 @@ struct ListingDetailView: View {
                 if let urls = listing.photoUrls, !urls.isEmpty {
                     TabView(selection: $selectedPhotoIndex) {
                         ForEach(Array(urls.enumerated()), id: \.offset) { index, urlString in
-                            AsyncImage(url: URL(string: urlString)) { phase in
-                                switch phase {
-                                case .success(let image):
-                                    image
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                case .failure:
-                                    Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.secondary)
-                                default:
-                                    ProgressView()
-                                }
-                            }
+                            RemoteImage(url: URL(string: urlString))
                             .tag(index)
                             .onTapGesture {
                                 selectedPhotoIndex = index
