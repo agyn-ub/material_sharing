@@ -12,8 +12,9 @@ struct ListingsListView: View {
     @State private var showFilter = false
     @State private var hasMore = true
     @State private var loadGeneration = 0
+    @State private var hasLoadedOnce = false
 
-    private let pageSize = 10
+    private let pageSize = 6
 
     var body: some View {
         NavigationStack {
@@ -37,7 +38,7 @@ struct ListingsListView: View {
                     }
                     .padding()
                     Spacer()
-                } else if listings.isEmpty && !isLoading {
+                } else if listings.isEmpty && !isLoading && hasLoadedOnce {
                     Spacer()
                     VStack(spacing: 12) {
                         Image(systemName: "tray")
@@ -47,6 +48,10 @@ struct ListingsListView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
+                    Spacer()
+                } else if listings.isEmpty && !isLoading && !hasLoadedOnce {
+                    Spacer()
+                    ProgressView("Поиск объявлений поблизости...")
                     Spacer()
                 } else {
                     ScrollView {
@@ -73,7 +78,15 @@ struct ListingsListView: View {
                     .refreshable { loadListings() }
                 }
             }
-            .background(Color.matshareBg)
+            .overlay {
+                if isLoading && !listings.isEmpty {
+                    ProgressView()
+                        .scaleEffect(1.2)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color(.systemBackground).opacity(0.6))
+                }
+            }
+            .background(Color(.systemBackground))
             .navigationTitle("MatShare")
             .searchable(text: $searchText, prompt: "Поиск по названию")
             .onSubmit(of: .search) { loadListings() }
@@ -102,14 +115,18 @@ struct ListingsListView: View {
                 .presentationDetents([.medium])
             }
             .onAppear {
+                print("[DEBUG] onAppear - authStatus: \(locationService.authorizationStatus.rawValue), location: \(String(describing: locationService.currentLocation))")
                 if locationService.authorizationStatus == .notDetermined {
                     locationService.requestPermission()
                 } else if locationService.currentLocation == nil {
                     locationService.getCurrentLocation()
+                } else {
+                    loadListings()
                 }
             }
             .onChange(of: locationService.currentLocation) { location in
-                if location != nil && listings.isEmpty { loadListings() }
+                print("[DEBUG] location changed: \(String(describing: location))")
+                if location != nil { loadListings() }
             }
             .onReceive(NotificationCenter.default.publisher(for: .listingCreated)) { _ in
                 loadListings()
@@ -128,7 +145,11 @@ struct ListingsListView: View {
     }
 
     private func loadListings() {
-        guard let location = locationService.currentLocation else { return }
+        guard let location = locationService.currentLocation else {
+            print("[DEBUG] loadListings: NO LOCATION, skipping")
+            return
+        }
+        print("[DEBUG] loadListings: lat=\(location.latitude) lng=\(location.longitude) search=\(searchText) radius=\(searchRadius)")
         isLoading = true
         errorMessage = nil
         hasMore = true
@@ -145,11 +166,18 @@ struct ListingsListView: View {
                     limit: pageSize,
                     offset: 0
                 )
-                guard gen == loadGeneration else { return }
+                guard gen == loadGeneration else {
+                    print("[DEBUG] loadListings: SKIPPED (gen \(gen) != \(loadGeneration))")
+                    return
+                }
+                print("[DEBUG] loadListings: GOT \(results.count) results")
                 listings = results
                 hasMore = results.count == pageSize
+                hasLoadedOnce = true
             } catch {
+                print("[DEBUG] loadListings: ERROR \(error)")
                 guard gen == loadGeneration else { return }
+                hasLoadedOnce = true
                 if listings.isEmpty {
                     errorMessage = error.localizedDescription
                 }

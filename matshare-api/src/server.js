@@ -25,28 +25,6 @@ app.get('/health', (req, res) => {
 });
 
 
-// Temporary debug endpoint - remove after testing
-app.get('/api/debug/nearby', async (req, res) => {
-  try {
-    const pool = require('./config/db');
-    const result = await pool.query(
-      'SELECT title, ST_Distance(location, ST_MakePoint(71.399, 51.100)::geography) as dist FROM listings WHERE status = $1 ORDER BY dist',
-      ['active']
-    );
-    const fn = await pool.query(
-      'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6, $7)',
-      [51.100, 71.399, 10000, null, null, 6, 0]
-    );
-    res.json({
-      all_active: result.rows.map(r => ({ title: r.title, dist: Math.round(r.dist) })),
-      search_fn_results: fn.rows.length,
-      search_fn_titles: fn.rows.map(r => r.title),
-    });
-  } catch (e) {
-    res.json({ error: e.message });
-  }
-});
-
 app.use('/api/listings', listingsRoutes);
 app.use('/api/users', usersRoutes);
 

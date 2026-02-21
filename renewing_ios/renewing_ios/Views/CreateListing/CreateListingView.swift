@@ -41,32 +41,58 @@ struct CreateListingView: View {
             Form {
                 // Photos
                 Section("Фото") {
-                    PhotosPicker(selection: $selectedPhotos, maxSelectionCount: Config.maxPhotosPerListing, matching: .images) {
-                        if photoImages.isEmpty && existingPhotoUrls.isEmpty {
-                            Label("Добавить фото (до \(Config.maxPhotosPerListing))", systemImage: "camera.fill")
-                        } else {
-                            ScrollView(.horizontal, showsIndicators: false) {
-                                HStack(spacing: 8) {
-                                    ForEach(photoImages.indices, id: \.self) { index in
-                                        Image(uiImage: photoImages[index])
-                                            .resizable()
-                                            .aspectRatio(contentMode: .fill)
-                                            .frame(width: 80, height: 80)
-                                            .cornerRadius(8)
-                                            .clipped()
-                                    }
-                                    if photoImages.isEmpty {
-                                        ForEach(existingPhotoUrls, id: \.self) { urlString in
-                                            RemoteImage(url: URL(string: urlString))
-                                                .frame(width: 80, height: 80)
-                                                .cornerRadius(8)
-                                                .clipped()
-                                        }
-                                    }
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(Color.matshareOrange)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(existingPhotoUrls, id: \.self) { urlString in
+                                ZStack(alignment: .topTrailing) {
+                                    RemoteImage(url: URL(string: urlString))
                                         .frame(width: 80, height: 80)
+                                        .cornerRadius(8)
+                                        .clipped()
+                                    Button {
+                                        existingPhotoUrls.removeAll { $0 == urlString }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.white, .red)
+                                    }
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
+                            ForEach(photoImages.indices, id: \.self) { index in
+                                ZStack(alignment: .topTrailing) {
+                                    Image(uiImage: photoImages[index])
+                                        .resizable()
+                                        .aspectRatio(contentMode: .fill)
+                                        .frame(width: 80, height: 80)
+                                        .cornerRadius(8)
+                                        .clipped()
+                                    Button {
+                                        photoImages.remove(at: index)
+                                        if index < selectedPhotos.count {
+                                            selectedPhotos.remove(at: index)
+                                        }
+                                    } label: {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.white, .red)
+                                    }
+                                    .offset(x: 4, y: -4)
+                                }
+                            }
+                            if totalPhotoCount < Config.maxPhotosPerListing {
+                                PhotosPicker(selection: $selectedPhotos, maxSelectionCount: Config.maxPhotosPerListing - existingPhotoUrls.count, matching: .images) {
+                                    VStack(spacing: 4) {
+                                        Image(systemName: "plus.circle.fill")
+                                            .font(.title2)
+                                            .foregroundStyle(Color.matshareOrange)
+                                        Text("Фото")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .frame(width: 80, height: 80)
+                                    .background(Color(.systemGray6))
+                                    .cornerRadius(8)
                                 }
                             }
                         }
@@ -194,6 +220,10 @@ struct CreateListingView: View {
         }
     }
 
+    private var totalPhotoCount: Int {
+        existingPhotoUrls.count + photoImages.count
+    }
+
     private var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
         locationService.currentLocation != nil
@@ -239,17 +269,13 @@ struct CreateListingView: View {
 
         Task {
             do {
-                // Upload new photos if selected
-                var photoUrls: [String] = []
-                if !photoImages.isEmpty {
-                    if let userId = AuthService.shared.currentUserId {
-                        for image in photoImages {
-                            let url = try await StorageService.shared.uploadPhoto(image: image, userId: userId)
-                            photoUrls.append(url)
-                        }
+                // Keep existing photos + upload new ones
+                var photoUrls: [String] = existingPhotoUrls
+                if !photoImages.isEmpty, let userId = AuthService.shared.currentUserId {
+                    for image in photoImages {
+                        let url = try await StorageService.shared.uploadPhoto(image: image, userId: userId)
+                        photoUrls.append(url)
                     }
-                } else if isEditing {
-                    photoUrls = existingPhotoUrls
                 }
 
                 let request = CreateListingRequest(

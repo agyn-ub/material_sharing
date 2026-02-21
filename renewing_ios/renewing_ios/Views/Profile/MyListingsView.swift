@@ -4,6 +4,7 @@ struct MyListingsView: View {
     @State private var listings: [Listing] = []
     @State private var isLoading = true
     @State private var errorMessage: String?
+    @State private var editingListing: Listing?
 
     var body: some View {
         Group {
@@ -53,11 +54,22 @@ struct MyListingsView: View {
                                 .tint(Color.matshareGreen)
                             }
                         }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                editingListing = listing
+                            } label: {
+                                Label("Изменить", systemImage: "pencil")
+                            }
+                            .tint(Color.matshareOrange)
+                        }
                     }
                 }
             }
         }
         .navigationTitle("Мои объявления")
+        .sheet(item: $editingListing) { listing in
+            CreateListingView(editing: listing)
+        }
         .task { await loadListings() }
         .refreshable { await loadListings() }
         .onReceive(NotificationCenter.default.publisher(for: .listingCreated)) { _ in

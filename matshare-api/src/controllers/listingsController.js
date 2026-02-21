@@ -132,9 +132,9 @@ exports.update = async (req, res) => {
         subcategory = COALESCE($4, subcategory),
         quantity = COALESCE($5, quantity),
         unit = COALESCE($6, unit),
-        price = COALESCE($7, price),
-        is_free = COALESCE($8, is_free),
-        photo_urls = COALESCE($9, photo_urls),
+        price = $7,
+        is_free = $8,
+        photo_urls = $9,
         location = CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
                         THEN ST_MakePoint($10, $11)::geography
                         ELSE location END,
@@ -142,12 +142,22 @@ exports.update = async (req, res) => {
         residential_complex = COALESCE($13, residential_complex),
         updated_at = NOW()
        WHERE id = $14
-       RETURNING *`,
+       RETURNING *, ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude`,
       [
-        title || null, description || null, category || null, subcategory || null,
-        quantity || null, unit || null, price || null, is_free || null,
-        photo_urls || null, longitude || null, latitude || null,
-        address_text || null, residential_complex || null, id,
+        title || null,
+        description != null ? description : null,
+        category || null,
+        subcategory != null ? subcategory : null,
+        quantity != null ? quantity : null,
+        unit || null,
+        price != null ? price : 0,
+        is_free != null ? is_free : false,
+        photo_urls || [],
+        longitude != null ? longitude : null,
+        latitude != null ? latitude : null,
+        address_text != null ? address_text : null,
+        residential_complex != null ? residential_complex : null,
+        id,
       ]
     );
 
