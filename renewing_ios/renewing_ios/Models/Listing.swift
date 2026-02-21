@@ -21,6 +21,7 @@ struct Listing: Codable, Identifiable, Hashable {
     let sellerPhone: String?
     let latitude: Double?
     let longitude: Double?
+    let residentialComplex: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -30,6 +31,7 @@ struct Listing: Codable, Identifiable, Hashable {
         case isFree = "is_free"
         case photoUrls = "photo_urls"
         case addressText = "address_text"
+        case residentialComplex = "residential_complex"
         case status
         case createdAt = "created_at"
         case distanceMeters = "distance_meters"
@@ -84,6 +86,7 @@ struct CreateListingRequest: Codable {
     let latitude: Double
     let longitude: Double
     let addressText: String?
+    let residentialComplex: String?
 
     enum CodingKeys: String, CodingKey {
         case title, description, category, subcategory
@@ -92,5 +95,6 @@ struct CreateListingRequest: Codable {
         case photoUrls = "photo_urls"
         case latitude, longitude
         case addressText = "address_text"
+        case residentialComplex = "residential_complex"
     }
 }

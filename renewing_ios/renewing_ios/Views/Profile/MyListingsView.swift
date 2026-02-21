@@ -63,6 +63,12 @@ struct MyListingsView: View {
         .onReceive(NotificationCenter.default.publisher(for: .listingCreated)) { _ in
             Task { await loadListings() }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .listingUpdated)) { _ in
+            Task { await loadListings() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .listingDeleted)) { _ in
+            Task { await loadListings() }
+        }
     }
 
     @ViewBuilder

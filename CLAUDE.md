@@ -38,7 +38,7 @@ Open `renewing_ios/renewing_ios.xcodeproj` in Xcode. The project uses Swift Pack
 
 Standard Express MVC pattern:
 
-- `server.js` — Entry point. Mounts routes at `/api/listings` and `/api/users`
+- `server.js` — Entry point. Mounts routes at `/api/listings` and `/api/users`. Serves static files from `public/` (privacy policy, support pages for App Store)
 - `config/db.js` — PostgreSQL connection pool using `pg`, connects to Supabase Postgres with SSL in production
 - `middleware/auth.js` — JWT verification using JWKS (ES256 public keys fetched from Supabase). Attaches `req.user.id` (from JWT `sub`) and `req.user.email`
 - `controllers/listingsController.js` — All listing logic: nearby search via PostGIS `search_listings_nearby()` SQL function, CRUD with ownership checks
@@ -50,9 +50,11 @@ All endpoints require Bearer token auth. The backend uses the Supabase service r
 
 ### Database (Supabase PostgreSQL + PostGIS)
 
-Two tables: `users` (UUID PK referencing `auth.users`) and `listings` (with `GEOGRAPHY(POINT, 4326)` column). The key spatial query is the `search_listings_nearby()` function which uses `ST_DWithin` for radius search and `ST_Distance` for sorting by distance.
+Two tables: `users` (UUID PK referencing `auth.users`) and `listings` (with `GEOGRAPHY(POINT, 4326)` column, plus `residential_complex VARCHAR(200)`). The key spatial query is the `search_listings_nearby()` function which uses `ST_DWithin` for radius search, `ST_Distance` for sorting by distance, and supports optional `search_text` for title ILIKE filtering.
 
 Location is stored as PostGIS geography but sent to/from the API as separate `latitude`/`longitude` fields. The controller converts between these using `ST_MakePoint(lng, lat)::geography` on write and `ST_Y/ST_X(location::geometry)` on read.
+
+SQL migrations live in `matshare-api/supabase/migrations/` — apply them via Supabase dashboard or CLI. When modifying the `search_listings_nearby()` function, you must DROP and recreate it since its return type includes all columns.
 
 ### iOS App (`renewing_ios/renewing_ios/`)
 

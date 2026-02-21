@@ -8,6 +8,7 @@ struct ListingsListView: View {
     @State private var errorMessage: String?
     @State private var searchRadius: Double = Double(Config.defaultSearchRadiusMeters)
     @State private var selectedCategory: String?
+    @State private var searchText = ""
     @State private var showFilter = false
     @State private var hasMore = true
     @State private var loadGeneration = 0
@@ -74,6 +75,11 @@ struct ListingsListView: View {
             }
             .background(Color.matshareBg)
             .navigationTitle("MatShare")
+            .searchable(text: $searchText, prompt: "Поиск по названию")
+            .onSubmit(of: .search) { loadListings() }
+            .onChange(of: searchText) { newValue in
+                if newValue.isEmpty { loadListings() }
+            }
             .navigationDestination(for: Listing.self) { listing in
                 ListingDetailView(listing: listing)
             }
@@ -108,11 +114,17 @@ struct ListingsListView: View {
             .onReceive(NotificationCenter.default.publisher(for: .listingCreated)) { _ in
                 loadListings()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .listingUpdated)) { _ in
+                loadListings()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .listingDeleted)) { _ in
+                loadListings()
+            }
         }
     }
 
     private var hasActiveFilters: Bool {
-        selectedCategory != nil || searchRadius != Double(Config.defaultSearchRadiusMeters)
+        selectedCategory != nil || searchRadius != Double(Config.defaultSearchRadiusMeters) || !searchText.isEmpty
     }
 
     private func loadListings() {
@@ -129,6 +141,7 @@ struct ListingsListView: View {
                     lng: location.longitude,
                     radius: Int(searchRadius),
                     category: selectedCategory,
+                    search: searchText.isEmpty ? nil : searchText,
                     limit: pageSize,
                     offset: 0
                 )
@@ -157,6 +170,7 @@ struct ListingsListView: View {
                     lng: location.longitude,
                     radius: Int(searchRadius),
                     category: selectedCategory,
+                    search: searchText.isEmpty ? nil : searchText,
                     limit: pageSize,
                     offset: listings.count
                 )

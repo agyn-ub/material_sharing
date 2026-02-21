@@ -1,9 +1,21 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let listingDeleted = Notification.Name("listingDeleted")
+}
+
 struct ListingDetailView: View {
     let listing: Listing
+    @Environment(\.dismiss) private var dismiss
     @State private var showFullScreen = false
     @State private var selectedPhotoIndex = 0
+    @State private var showEditSheet = false
+    @State private var showDeleteAlert = false
+    @State private var isDeleting = false
+
+    private var isOwner: Bool {
+        listing.userId == AuthService.shared.currentUserId
+    }
 
     var body: some View {
         ScrollView {
@@ -79,6 +91,9 @@ struct ListingDetailView: View {
                     if let sub = listing.subcategory {
                         DetailRow(icon: "tag", label: "Подкатегория", value: sub)
                     }
+                    if let rc = listing.residentialComplex, !rc.isEmpty {
+                        DetailRow(icon: "building.2", label: "ЖК", value: rc)
+                    }
                     if let address = listing.addressText {
                         DetailRow(icon: "mappin", label: "Местоположение", value: address)
                     }
@@ -139,6 +154,55 @@ struct ListingDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if isOwner {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showEditSheet = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        showDeleteAlert = true
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundStyle(.red)
+                    }
+                }
+            }
+        }
+        .sheet(isPresented: $showEditSheet) {
+            CreateListingView(editing: listing)
+        }
+        .alert("Удалить объявление?", isPresented: $showDeleteAlert) {
+            Button("Отмена", role: .cancel) { }
+            Button("Удалить", role: .destructive) {
+                deleteListing()
+            }
+        } message: {
+            Text("Это действие нельзя отменить.")
+        }
+        .overlay {
+            if isDeleting {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .overlay { ProgressView("Удаление...").tint(.white) }
+            }
+        }
+    }
+
+    private func deleteListing() {
+        isDeleting = true
+        Task {
+            do {
+                try await APIService.shared.deleteListing(id: listing.id)
+                NotificationCenter.default.post(name: .listingDeleted, object: nil)
+                dismiss()
+            } catch {
+                isDeleting = false
+            }
+        }
     }
 }
 

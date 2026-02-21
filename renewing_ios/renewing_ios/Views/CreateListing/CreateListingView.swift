@@ -3,11 +3,16 @@ import PhotosUI
 
 extension Notification.Name {
     static let listingCreated = Notification.Name("listingCreated")
+    static let listingUpdated = Notification.Name("listingUpdated")
 }
 
 struct CreateListingView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var locationService = LocationService()
+
+    // Edit mode
+    let editingListing: Listing?
+    private var isEditing: Bool { editingListing != nil }
 
     @State private var title = ""
     @State private var description = ""
@@ -16,14 +21,20 @@ struct CreateListingView: View {
     @State private var quantity = ""
     @State private var unit: ListingUnit = .pieces
     @State private var price = ""
-    @State private var isFree = true
+    @State private var isFree = false
+    @State private var residentialComplex = ""
 
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var photoImages: [UIImage] = []
+    @State private var existingPhotoUrls: [String] = []
 
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var showSuccess = false
+
+    init(editing listing: Listing? = nil) {
+        self.editingListing = listing
+    }
 
     var body: some View {
         NavigationStack {
@@ -31,7 +42,7 @@ struct CreateListingView: View {
                 // Photos
                 Section("Фото") {
                     PhotosPicker(selection: $selectedPhotos, maxSelectionCount: Config.maxPhotosPerListing, matching: .images) {
-                        if photoImages.isEmpty {
+                        if photoImages.isEmpty && existingPhotoUrls.isEmpty {
                             Label("Добавить фото (до \(Config.maxPhotosPerListing))", systemImage: "camera.fill")
                         } else {
                             ScrollView(.horizontal, showsIndicators: false) {
@@ -43,6 +54,14 @@ struct CreateListingView: View {
                                             .frame(width: 80, height: 80)
                                             .cornerRadius(8)
                                             .clipped()
+                                    }
+                                    if photoImages.isEmpty {
+                                        ForEach(existingPhotoUrls, id: \.self) { urlString in
+                                            RemoteImage(url: URL(string: urlString))
+                                                .frame(width: 80, height: 80)
+                                                .cornerRadius(8)
+                                                .clipped()
+                                        }
                                     }
                                     Image(systemName: "plus.circle.fill")
                                         .font(.title2)
@@ -122,6 +141,8 @@ struct CreateListingView: View {
                         }
                     }
 
+                    TextField("Название ЖК (необязательно)", text: $residentialComplex)
+
                     if let error = locationService.locationError {
                         Text(error)
                             .font(.caption)
@@ -137,14 +158,14 @@ struct CreateListingView: View {
                     }
                 }
             }
-            .navigationTitle("Новое объявление")
+            .navigationTitle(isEditing ? "Редактирование" : "Новое объявление")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Отмена") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Разместить") { submitListing() }
+                    Button(isEditing ? "Сохранить" : "Разместить") { submitListing() }
                         .fontWeight(.semibold)
                         .disabled(!isFormValid || isSubmitting)
                 }
@@ -153,15 +174,18 @@ struct CreateListingView: View {
                 if isSubmitting {
                     Color.black.opacity(0.3)
                         .ignoresSafeArea()
-                        .overlay { ProgressView("Публикация...").tint(.white) }
+                        .overlay { ProgressView(isEditing ? "Сохранение..." : "Публикация...").tint(.white) }
                 }
             }
-            .alert("Опубликовано!", isPresented: $showSuccess) {
+            .alert(isEditing ? "Сохранено!" : "Опубликовано!", isPresented: $showSuccess) {
                 Button("OK") { dismiss() }
             } message: {
-                Text("Ваше объявление теперь видно людям поблизости.")
+                Text(isEditing ? "Объявление обновлено." : "Ваше объявление теперь видно людям поблизости.")
             }
             .onAppear {
+                if let listing = editingListing {
+                    prefillFromListing(listing)
+                }
                 if locationService.currentLocation == nil {
                     locationService.requestPermission()
                     locationService.getCurrentLocation()
@@ -173,6 +197,27 @@ struct CreateListingView: View {
     private var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
         locationService.currentLocation != nil
+    }
+
+    private func prefillFromListing(_ listing: Listing) {
+        title = listing.title
+        description = listing.description ?? ""
+        if let cat = ListingCategory(rawValue: listing.category) {
+            category = cat
+        }
+        subcategory = listing.subcategory ?? ""
+        if let qty = listing.quantity {
+            quantity = String(format: "%.0f", qty)
+        }
+        if let u = listing.unit, let unitVal = ListingUnit(rawValue: u) {
+            unit = unitVal
+        }
+        isFree = listing.isFree ?? false
+        if let p = listing.price, p > 0 {
+            price = String(format: "%.0f", p)
+        }
+        existingPhotoUrls = listing.photoUrls ?? []
+        residentialComplex = listing.residentialComplex ?? ""
     }
 
     private func loadPhotos(_ items: [PhotosPickerItem]) {
@@ -194,13 +239,17 @@ struct CreateListingView: View {
 
         Task {
             do {
-                // Upload photos
+                // Upload new photos if selected
                 var photoUrls: [String] = []
-                if let userId = AuthService.shared.currentUserId {
-                    for image in photoImages {
-                        let url = try await StorageService.shared.uploadPhoto(image: image, userId: userId)
-                        photoUrls.append(url)
+                if !photoImages.isEmpty {
+                    if let userId = AuthService.shared.currentUserId {
+                        for image in photoImages {
+                            let url = try await StorageService.shared.uploadPhoto(image: image, userId: userId)
+                            photoUrls.append(url)
+                        }
                     }
+                } else if isEditing {
+                    photoUrls = existingPhotoUrls
                 }
 
                 let request = CreateListingRequest(
@@ -215,11 +264,17 @@ struct CreateListingView: View {
                     photoUrls: photoUrls,
                     latitude: location.latitude,
                     longitude: location.longitude,
-                    addressText: nil
+                    addressText: nil,
+                    residentialComplex: residentialComplex.isEmpty ? nil : residentialComplex
                 )
 
-                _ = try await APIService.shared.createListing(request)
-                NotificationCenter.default.post(name: .listingCreated, object: nil)
+                if isEditing, let listingId = editingListing?.id {
+                    _ = try await APIService.shared.updateListing(id: listingId, request)
+                    NotificationCenter.default.post(name: .listingUpdated, object: nil)
+                } else {
+                    _ = try await APIService.shared.createListing(request)
+                    NotificationCenter.default.post(name: .listingCreated, object: nil)
+                }
                 showSuccess = true
             } catch {
                 errorMessage = error.localizedDescription

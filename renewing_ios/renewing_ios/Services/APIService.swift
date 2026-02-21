@@ -23,6 +23,7 @@ class APIService {
         lng: Double,
         radius: Int = Config.defaultSearchRadiusMeters,
         category: String? = nil,
+        search: String? = nil,
         limit: Int = 50,
         offset: Int = 0
     ) async throws -> [Listing] {
@@ -36,6 +37,9 @@ class APIService {
         ]
         if let category {
             components.queryItems?.append(URLQueryItem(name: "category", value: category))
+        }
+        if let search, !search.isEmpty {
+            components.queryItems?.append(URLQueryItem(name: "search", value: search))
         }
 
         let request = try await authorizedRequest(url: components.url!)
@@ -68,6 +72,15 @@ class APIService {
         let url = URL(string: "\(baseURL)/listings")!
         let body = try JSONEncoder().encode(listing)
         let request = try await authorizedRequest(url: url, method: "POST", body: body)
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
+        return try JSONDecoder().decode(Listing.self, from: data)
+    }
+
+    func updateListing(id: String, _ listing: CreateListingRequest) async throws -> Listing {
+        let url = URL(string: "\(baseURL)/listings/\(id)")!
+        let body = try JSONEncoder().encode(listing)
+        let request = try await authorizedRequest(url: url, method: "PUT", body: body)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
         return try JSONDecoder().decode(Listing.self, from: data)

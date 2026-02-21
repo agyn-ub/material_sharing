@@ -14,19 +14,20 @@ function formatListing(row) {
 
 exports.getNearby = async (req, res) => {
   try {
-    const { lat, lng, radius = 10000, category, limit = 50, offset = 0 } = req.query;
+    const { lat, lng, radius = 10000, category, search, limit = 50, offset = 0 } = req.query;
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'lat and lng are required' });
     }
 
     const result = await pool.query(
-      'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6)',
+      'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6, $7)',
       [
         parseFloat(lat),
         parseFloat(lng),
         parseInt(radius),
         category || null,
+        search || null,
         parseInt(limit),
         parseInt(offset),
       ]
@@ -75,21 +76,23 @@ exports.create = async (req, res) => {
       title, description, category, subcategory,
       quantity, unit, price, is_free,
       photo_urls, latitude, longitude, address_text,
+      residential_complex,
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO listings
         (user_id, title, description, category, subcategory,
          quantity, unit, price, is_free, photo_urls,
-         location, address_text)
+         location, address_text, residential_complex)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-               ST_MakePoint($11, $12)::geography, $13)
+               ST_MakePoint($11, $12)::geography, $13, $14)
        RETURNING *`,
       [
         req.user.id, title, description || null, category, subcategory || null,
         quantity || null, unit || null, price || 0, is_free || false,
         photo_urls || [],
         longitude, latitude, address_text || null,
+        residential_complex || null,
       ]
     );
 
@@ -118,6 +121,7 @@ exports.update = async (req, res) => {
       title, description, category, subcategory,
       quantity, unit, price, is_free,
       photo_urls, latitude, longitude, address_text,
+      residential_complex,
     } = req.body;
 
     const result = await pool.query(
@@ -135,14 +139,15 @@ exports.update = async (req, res) => {
                         THEN ST_MakePoint($10, $11)::geography
                         ELSE location END,
         address_text = COALESCE($12, address_text),
+        residential_complex = COALESCE($13, residential_complex),
         updated_at = NOW()
-       WHERE id = $13
+       WHERE id = $14
        RETURNING *`,
       [
         title || null, description || null, category || null, subcategory || null,
         quantity || null, unit || null, price || null, is_free || null,
         photo_urls || null, longitude || null, latitude || null,
-        address_text || null, id,
+        address_text || null, residential_complex || null, id,
       ]
     );
 
