@@ -29,12 +29,6 @@ struct ProfileView: View {
                     .padding(.vertical, 4)
                 }
 
-                Section("Мои объявления") {
-                    NavigationLink(destination: MyListingsView()) {
-                        Label("Мои объявления", systemImage: "list.bullet")
-                    }
-                }
-
                 Section("Аккаунт") {
                     Button {
                         editName = appState.userProfile?.name ?? ""

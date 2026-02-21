@@ -58,11 +58,19 @@ struct ContentView: View {
                 }
                 .tag(1)
 
+            NavigationStack {
+                MyListingsView()
+            }
+                .tabItem {
+                    Label("Мои", systemImage: "list.bullet")
+                }
+                .tag(2)
+
             ProfileView(appState: appState)
                 .tabItem {
                     Label("Профиль", systemImage: "person.circle")
                 }
-                .tag(2)
+                .tag(3)
         }
         .tint(Color.matshareOrange)
         .sheet(isPresented: $showCreateListing) {
