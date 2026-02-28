@@ -22,7 +22,6 @@ class APIService {
         lat: Double,
         lng: Double,
         radius: Int = Config.defaultSearchRadiusMeters,
-        category: String? = nil,
         search: String? = nil,
         limit: Int = 50,
         offset: Int = 0
@@ -35,9 +34,6 @@ class APIService {
             URLQueryItem(name: "limit", value: "\(limit)"),
             URLQueryItem(name: "offset", value: "\(offset)"),
         ]
-        if let category {
-            components.queryItems?.append(URLQueryItem(name: "category", value: category))
-        }
         if let search, !search.isEmpty {
             components.queryItems?.append(URLQueryItem(name: "search", value: search))
         }

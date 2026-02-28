@@ -1,14 +1,11 @@
 import Foundation
+import CoreLocation
 
 struct Listing: Codable, Identifiable, Hashable {
     let id: String
     let userId: String
     let title: String
     let description: String?
-    let category: String
-    let subcategory: String?
-    let quantity: Double?
-    let unit: String?
     let price: Double?
     let currency: String?
     let isFree: Bool?
@@ -21,17 +18,15 @@ struct Listing: Codable, Identifiable, Hashable {
     let sellerPhone: String?
     let latitude: Double?
     let longitude: Double?
-    let residentialComplex: String?
 
     enum CodingKeys: String, CodingKey {
         case id
         case userId = "user_id"
-        case title, description, category, subcategory
-        case quantity, unit, price, currency
+        case title, description
+        case price, currency
         case isFree = "is_free"
         case photoUrls = "photo_urls"
         case addressText = "address_text"
-        case residentialComplex = "residential_complex"
         case status
         case createdAt = "created_at"
         case distanceMeters = "distance_meters"
@@ -57,6 +52,11 @@ struct Listing: Codable, Identifiable, Hashable {
         return "\(formatted) \(currency ?? "KZT")"
     }
 
+    var coordinate: CLLocationCoordinate2D? {
+        guard let latitude, let longitude else { return nil }
+        return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+    }
+
     var firstPhotoURL: URL? {
         guard let urls = photoUrls, let first = urls.first else { return nil }
         return URL(string: first)
@@ -76,25 +76,16 @@ struct ListingsResponse: Codable {
 struct CreateListingRequest: Codable {
     let title: String
     let description: String?
-    let category: String
-    let subcategory: String?
-    let quantity: Double?
-    let unit: String?
     let price: Double?
     let isFree: Bool
     let photoUrls: [String]
     let latitude: Double
     let longitude: Double
-    let addressText: String?
-    let residentialComplex: String?
 
     enum CodingKeys: String, CodingKey {
-        case title, description, category, subcategory
-        case quantity, unit, price
+        case title, description, price
         case isFree = "is_free"
         case photoUrls = "photo_urls"
         case latitude, longitude
-        case addressText = "address_text"
-        case residentialComplex = "residential_complex"
     }
 }

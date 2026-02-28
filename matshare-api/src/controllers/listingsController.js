@@ -5,7 +5,6 @@ function formatListing(row) {
   return {
     ...row,
     price: row.price != null ? parseFloat(row.price) : null,
-    quantity: row.quantity != null ? parseFloat(row.quantity) : null,
     distance_meters: row.distance_meters != null ? parseFloat(row.distance_meters) : null,
     latitude: row.latitude != null ? parseFloat(row.latitude) : null,
     longitude: row.longitude != null ? parseFloat(row.longitude) : null,
@@ -14,19 +13,18 @@ function formatListing(row) {
 
 exports.getNearby = async (req, res) => {
   try {
-    const { lat, lng, radius = 10000, category, search, limit = 50, offset = 0 } = req.query;
+    const { lat, lng, radius = 10000, search, limit = 50, offset = 0 } = req.query;
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'lat and lng are required' });
     }
 
     const result = await pool.query(
-      'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6, $7)',
+      'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6)',
       [
         parseFloat(lat),
         parseFloat(lng),
         parseInt(radius),
-        category || null,
         search || null,
         parseInt(limit),
         parseInt(offset),
@@ -73,26 +71,25 @@ exports.create = async (req, res) => {
     }
 
     const {
-      title, description, category, subcategory,
-      quantity, unit, price, is_free,
+      title, description,
+      price, is_free,
       photo_urls, latitude, longitude, address_text,
-      residential_complex,
     } = req.body;
 
     const result = await pool.query(
       `INSERT INTO listings
-        (user_id, title, description, category, subcategory,
-         quantity, unit, price, is_free, photo_urls,
-         location, address_text, residential_complex)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
-               ST_MakePoint($11, $12)::geography, $13, $14)
+        (user_id, title, description,
+         price, is_free, photo_urls,
+         location, address_text)
+       VALUES ($1, $2, $3,
+               $4, $5, $6,
+               ST_MakePoint($7, $8)::geography, $9)
        RETURNING *`,
       [
-        req.user.id, title, description || null, category, subcategory || null,
-        quantity || null, unit || null, price || 0, is_free || false,
+        req.user.id, title, description || null,
+        price || 0, is_free || false,
         photo_urls || [],
         longitude, latitude, address_text || null,
-        residential_complex || null,
       ]
     );
 
@@ -118,45 +115,34 @@ exports.update = async (req, res) => {
     }
 
     const {
-      title, description, category, subcategory,
-      quantity, unit, price, is_free,
+      title, description,
+      price, is_free,
       photo_urls, latitude, longitude, address_text,
-      residential_complex,
     } = req.body;
 
     const result = await pool.query(
       `UPDATE listings SET
         title = COALESCE($1, title),
         description = COALESCE($2, description),
-        category = COALESCE($3, category),
-        subcategory = COALESCE($4, subcategory),
-        quantity = COALESCE($5, quantity),
-        unit = COALESCE($6, unit),
-        price = $7,
-        is_free = $8,
-        photo_urls = $9,
-        location = CASE WHEN $10::double precision IS NOT NULL AND $11::double precision IS NOT NULL
-                        THEN ST_MakePoint($10, $11)::geography
+        price = $3,
+        is_free = $4,
+        photo_urls = $5,
+        location = CASE WHEN $6::double precision IS NOT NULL AND $7::double precision IS NOT NULL
+                        THEN ST_MakePoint($6, $7)::geography
                         ELSE location END,
-        address_text = COALESCE($12, address_text),
-        residential_complex = COALESCE($13, residential_complex),
+        address_text = COALESCE($8, address_text),
         updated_at = NOW()
-       WHERE id = $14
+       WHERE id = $9
        RETURNING *, ST_Y(location::geometry) AS latitude, ST_X(location::geometry) AS longitude`,
       [
         title || null,
         description != null ? description : null,
-        category || null,
-        subcategory != null ? subcategory : null,
-        quantity != null ? quantity : null,
-        unit || null,
         price != null ? price : 0,
         is_free != null ? is_free : false,
         photo_urls || [],
         longitude != null ? longitude : null,
         latitude != null ? latitude : null,
         address_text != null ? address_text : null,
-        residential_complex != null ? residential_complex : null,
         id,
       ]
     );

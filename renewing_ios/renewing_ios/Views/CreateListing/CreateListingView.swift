@@ -16,13 +16,8 @@ struct CreateListingView: View {
 
     @State private var title = ""
     @State private var description = ""
-    @State private var category: ListingCategory = .materials
-    @State private var subcategory = ""
-    @State private var quantity = ""
-    @State private var unit: ListingUnit = .pieces
     @State private var price = ""
     @State private var isFree = false
-    @State private var residentialComplex = ""
 
     @State private var selectedPhotos: [PhotosPickerItem] = []
     @State private var photoImages: [UIImage] = []
@@ -39,61 +34,55 @@ struct CreateListingView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Photos
+                // Photo (1 max)
                 Section("Фото") {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(existingPhotoUrls, id: \.self) { urlString in
-                                ZStack(alignment: .topTrailing) {
-                                    RemoteImage(url: URL(string: urlString))
-                                        .frame(width: 80, height: 80)
-                                        .cornerRadius(8)
-                                        .clipped()
-                                    Button {
-                                        existingPhotoUrls.removeAll { $0 == urlString }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption)
-                                            .foregroundStyle(.white, .red)
-                                    }
-                                    .offset(x: 4, y: -4)
-                                }
-                            }
-                            ForEach(photoImages.indices, id: \.self) { index in
-                                ZStack(alignment: .topTrailing) {
-                                    Image(uiImage: photoImages[index])
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 80, height: 80)
-                                        .cornerRadius(8)
-                                        .clipped()
-                                    Button {
-                                        photoImages.remove(at: index)
-                                        if index < selectedPhotos.count {
-                                            selectedPhotos.remove(at: index)
-                                        }
-                                    } label: {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .font(.caption)
-                                            .foregroundStyle(.white, .red)
-                                    }
-                                    .offset(x: 4, y: -4)
-                                }
-                            }
-                            if totalPhotoCount < Config.maxPhotosPerListing {
-                                PhotosPicker(selection: $selectedPhotos, maxSelectionCount: Config.maxPhotosPerListing - existingPhotoUrls.count, matching: .images) {
-                                    VStack(spacing: 4) {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundStyle(Color.matshareOrange)
-                                        Text("Фото")
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
+                    HStack(spacing: 8) {
+                        if let urlString = existingPhotoUrls.first {
+                            ZStack(alignment: .topTrailing) {
+                                RemoteImage(url: URL(string: urlString))
                                     .frame(width: 80, height: 80)
-                                    .background(Color(.systemGray6))
                                     .cornerRadius(8)
+                                    .clipped()
+                                Button {
+                                    existingPhotoUrls.removeAll()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.white, .red)
                                 }
+                                .offset(x: 4, y: -4)
+                            }
+                        } else if let image = photoImages.first {
+                            ZStack(alignment: .topTrailing) {
+                                Image(uiImage: image)
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fill)
+                                    .frame(width: 80, height: 80)
+                                    .cornerRadius(8)
+                                    .clipped()
+                                Button {
+                                    photoImages.removeAll()
+                                    selectedPhotos.removeAll()
+                                } label: {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .font(.caption)
+                                        .foregroundStyle(.white, .red)
+                                }
+                                .offset(x: 4, y: -4)
+                            }
+                        } else {
+                            PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 1, matching: .images) {
+                                VStack(spacing: 4) {
+                                    Image(systemName: "plus.circle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(Color.matshareOrange)
+                                    Text("Фото")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .frame(width: 80, height: 80)
+                                .background(Color(.systemGray6))
+                                .cornerRadius(8)
                             }
                         }
                     }
@@ -108,34 +97,10 @@ struct CreateListingView: View {
 
                     TextField("Описание (необязательно)", text: $description, axis: .vertical)
                         .lineLimit(3...6)
-
-                    Picker("Категория", selection: $category) {
-                        ForEach(ListingCategory.allCases) { cat in
-                            Text(cat.displayName).tag(cat)
-                        }
-                    }
-
-                    Picker("Подкатегория", selection: $subcategory) {
-                        Text("Нет").tag("")
-                        ForEach(category.subcategories, id: \.self) { sub in
-                            Text(sub).tag(sub)
-                        }
-                    }
                 }
 
-                // Quantity & Price
-                Section("Количество и цена") {
-                    HStack {
-                        TextField("Количество", text: $quantity)
-                            .keyboardType(.decimalPad)
-                        Picker("Ед. изм.", selection: $unit) {
-                            ForEach(ListingUnit.allCases) { u in
-                                Text(u.displayName).tag(u)
-                            }
-                        }
-                        .labelsHidden()
-                    }
-
+                // Price
+                Section("Цена") {
                     Toggle("Отдать бесплатно", isOn: $isFree)
                         .tint(Color.matshareGreen)
 
@@ -166,8 +131,6 @@ struct CreateListingView: View {
                             Label("Использовать текущее местоположение", systemImage: "location.circle")
                         }
                     }
-
-                    TextField("Название ЖК (необязательно)", text: $residentialComplex)
 
                     if let error = locationService.locationError {
                         Text(error)
@@ -220,10 +183,6 @@ struct CreateListingView: View {
         }
     }
 
-    private var totalPhotoCount: Int {
-        existingPhotoUrls.count + photoImages.count
-    }
-
     private var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
         locationService.currentLocation != nil
@@ -232,22 +191,11 @@ struct CreateListingView: View {
     private func prefillFromListing(_ listing: Listing) {
         title = listing.title
         description = listing.description ?? ""
-        if let cat = ListingCategory(rawValue: listing.category) {
-            category = cat
-        }
-        subcategory = listing.subcategory ?? ""
-        if let qty = listing.quantity {
-            quantity = String(format: "%.0f", qty)
-        }
-        if let u = listing.unit, let unitVal = ListingUnit(rawValue: u) {
-            unit = unitVal
-        }
         isFree = listing.isFree ?? false
         if let p = listing.price, p > 0 {
             price = String(format: "%.0f", p)
         }
-        existingPhotoUrls = listing.photoUrls ?? []
-        residentialComplex = listing.residentialComplex ?? ""
+        existingPhotoUrls = Array((listing.photoUrls ?? []).prefix(1))
     }
 
     private func loadPhotos(_ items: [PhotosPickerItem]) {
@@ -281,17 +229,11 @@ struct CreateListingView: View {
                 let request = CreateListingRequest(
                     title: title.trimmingCharacters(in: .whitespaces),
                     description: description.isEmpty ? nil : description,
-                    category: category.rawValue,
-                    subcategory: subcategory.isEmpty ? nil : subcategory,
-                    quantity: Double(quantity),
-                    unit: unit.rawValue,
                     price: isFree ? 0 : Double(price),
                     isFree: isFree,
                     photoUrls: photoUrls,
                     latitude: location.latitude,
-                    longitude: location.longitude,
-                    addressText: nil,
-                    residentialComplex: residentialComplex.isEmpty ? nil : residentialComplex
+                    longitude: location.longitude
                 )
 
                 if isEditing, let listingId = editingListing?.id {

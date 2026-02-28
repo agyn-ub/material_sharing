@@ -59,14 +59,6 @@ struct ListingDetailView: View {
                         if !listing.distanceFormatted.isEmpty {
                             DistanceBadge(distance: listing.distanceFormatted)
                         }
-                        if !listing.category.isEmpty {
-                            Text(listing.category.capitalized)
-                                .font(.caption)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(Color(.systemGray5))
-                                .cornerRadius(8)
-                        }
                     }
                 }
                 .padding(.horizontal)
@@ -85,15 +77,6 @@ struct ListingDetailView: View {
 
                 // Details
                 VStack(alignment: .leading, spacing: 8) {
-                    if let qty = listing.quantity, let unit = listing.unit {
-                        DetailRow(icon: "number", label: "Количество", value: "\(String(format: "%.0f", qty)) \(unit)")
-                    }
-                    if let sub = listing.subcategory {
-                        DetailRow(icon: "tag", label: "Подкатегория", value: sub)
-                    }
-                    if let rc = listing.residentialComplex, !rc.isEmpty {
-                        DetailRow(icon: "building.2", label: "ЖК", value: rc)
-                    }
                     if let address = listing.addressText {
                         DetailRow(icon: "mappin", label: "Местоположение", value: address)
                     }

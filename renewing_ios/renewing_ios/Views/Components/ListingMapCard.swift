@@ -1,17 +1,15 @@
 import SwiftUI
 
-struct ListingCardView: View {
+struct ListingMapCard: View {
     let listing: Listing
 
     var body: some View {
         HStack(spacing: 12) {
-            // Photo
             RemoteImage(url: listing.firstThumbnailURL, fallbackURL: listing.firstPhotoURL)
-                .frame(width: 80, height: 80)
+                .frame(width: 70, height: 70)
                 .cornerRadius(10)
                 .clipped()
 
-            // Info
             VStack(alignment: .leading, spacing: 4) {
                 Text(listing.title)
                     .font(.subheadline.weight(.semibold))
@@ -34,6 +32,6 @@ struct ListingCardView: View {
         .padding(12)
         .background(Color(.systemBackground))
         .cornerRadius(14)
-        .shadow(color: .black.opacity(0.05), radius: 4, y: 2)
+        .shadow(color: .black.opacity(0.1), radius: 8, y: 4)
     }
 }

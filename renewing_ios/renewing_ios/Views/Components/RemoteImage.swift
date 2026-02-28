@@ -41,14 +41,7 @@ struct RemoteImage: View {
     }
 
     private func fetchImage(from url: URL) async -> UIImage? {
-        do {
-            let (data, response) = try await URLSession.shared.data(from: url)
-            let httpResponse = response as? HTTPURLResponse
-            print("[RemoteImage] URL: \(url.absoluteString) — status: \(httpResponse?.statusCode ?? -1), bytes: \(data.count)")
-            return UIImage(data: data)
-        } catch {
-            print("[RemoteImage] ERROR loading \(url.absoluteString): \(error)")
-            return nil
-        }
+        guard let (data, _) = try? await URLSession.shared.data(from: url) else { return nil }
+        return UIImage(data: data)
     }
 }
