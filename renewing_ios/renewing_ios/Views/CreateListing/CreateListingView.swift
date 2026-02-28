@@ -9,6 +9,9 @@ extension Notification.Name {
 struct CreateListingView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var locationService = LocationService()
+    @FocusState private var focusedField: Field?
+
+    enum Field { case title, description, price }
 
     // Edit mode
     let editingListing: Listing?
@@ -26,145 +29,183 @@ struct CreateListingView: View {
     @State private var isSubmitting = false
     @State private var errorMessage: String?
     @State private var showSuccess = false
+    @State private var showCancelConfirm = false
 
     init(editing listing: Listing? = nil) {
         self.editingListing = listing
     }
 
+    private var hasUnsavedChanges: Bool {
+        !title.isEmpty || !description.isEmpty || !price.isEmpty || isFree || !photoImages.isEmpty
+    }
+
     var body: some View {
         NavigationStack {
-            Form {
-                // Photo (1 max)
-                Section("Фото") {
-                    HStack(spacing: 8) {
-                        if let urlString = existingPhotoUrls.first {
-                            ZStack(alignment: .topTrailing) {
-                                RemoteImage(url: URL(string: urlString))
-                                    .frame(width: 80, height: 80)
-                                    .cornerRadius(8)
-                                    .clipped()
-                                Button {
-                                    existingPhotoUrls.removeAll()
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.white, .red)
-                                }
-                                .offset(x: 4, y: -4)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Photo
+                    photoSection
+                        .padding(.horizontal)
+
+                    // Title & Description
+                    VStack(spacing: 0) {
+                        TextField("Название", text: $title)
+                            .focused($focusedField, equals: .title)
+                            .padding()
+
+                        Divider().padding(.leading)
+
+                        TextField("Описание (необязательно)", text: $description, axis: .vertical)
+                            .focused($focusedField, equals: .description)
+                            .lineLimit(3...6)
+                            .padding()
+                    }
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
+
+                    // Price
+                    VStack(spacing: 12) {
+                        HStack(spacing: 10) {
+                            Button {
+                                isFree = true
+                                focusedField = nil
+                            } label: {
+                                Text("Бесплатно")
+                                    .font(.subheadline.weight(.medium))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(isFree ? Color.matshareGreen : Color(.systemGray5))
+                                    .foregroundStyle(isFree ? .white : .primary)
+                                    .cornerRadius(10)
                             }
-                        } else if let image = photoImages.first {
-                            ZStack(alignment: .topTrailing) {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fill)
-                                    .frame(width: 80, height: 80)
-                                    .cornerRadius(8)
-                                    .clipped()
-                                Button {
-                                    photoImages.removeAll()
-                                    selectedPhotos.removeAll()
-                                } label: {
-                                    Image(systemName: "xmark.circle.fill")
-                                        .font(.caption)
-                                        .foregroundStyle(.white, .red)
-                                }
-                                .offset(x: 4, y: -4)
-                            }
-                        } else {
-                            PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 1, matching: .images) {
-                                VStack(spacing: 4) {
-                                    Image(systemName: "plus.circle.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(Color.matshareOrange)
-                                    Text("Фото")
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(width: 80, height: 80)
-                                .background(Color(.systemGray6))
-                                .cornerRadius(8)
+
+                            Button {
+                                isFree = false
+                                focusedField = .price
+                            } label: {
+                                Text("Указать цену")
+                                    .font(.subheadline.weight(.medium))
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 10)
+                                    .background(!isFree ? Color.matshareOrange : Color(.systemGray5))
+                                    .foregroundStyle(!isFree ? .white : .primary)
+                                    .cornerRadius(10)
                             }
                         }
+
+                        if !isFree {
+                            HStack {
+                                TextField("0", text: $price)
+                                    .focused($focusedField, equals: .price)
+                                    .keyboardType(.numberPad)
+                                    .font(.title2.weight(.semibold))
+                                Text("KZT")
+                                    .font(.title3)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .background(Color(.secondarySystemGroupedBackground))
+                            .cornerRadius(12)
+                        }
                     }
-                    .onChange(of: selectedPhotos) { items in
-                        loadPhotos(items)
-                    }
-                }
+                    .padding(.horizontal)
 
-                // Details
-                Section("Детали") {
-                    TextField("Название", text: $title)
-
-                    TextField("Описание (необязательно)", text: $description, axis: .vertical)
-                        .lineLimit(3...6)
-                }
-
-                // Price
-                Section("Цена") {
-                    Toggle("Отдать бесплатно", isOn: $isFree)
-                        .tint(Color.matshareGreen)
-
-                    if !isFree {
-                        HStack {
-                            TextField("Цена", text: $price)
-                                .keyboardType(.numberPad)
-                            Text("KZT")
+                    // Location
+                    HStack {
+                        if locationService.currentLocation != nil {
+                            Image(systemName: "checkmark.circle.fill")
+                                .foregroundStyle(Color.matshareGreen)
+                            Text("Местоположение определено")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        } else if locationService.locationError != nil {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundStyle(.red)
+                            Text("Не удалось определить")
+                                .font(.subheadline)
+                                .foregroundStyle(.red)
+                            Spacer()
+                            Button("Повторить") {
+                                locationService.requestPermission()
+                                locationService.getCurrentLocation()
+                            }
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(Color.matshareOrange)
+                        } else {
+                            ProgressView()
+                                .controlSize(.small)
+                            Text("Определяем местоположение...")
+                                .font(.subheadline)
                                 .foregroundStyle(.secondary)
                         }
+                        Spacer()
                     }
-                }
+                    .padding()
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .padding(.horizontal)
 
-                // Location
-                Section("Местоположение") {
-                    if let loc = locationService.currentLocation {
-                        HStack {
-                            Image(systemName: "location.fill")
-                                .foregroundStyle(Color.matshareGreen)
-                            Text(String(format: "%.4f, %.4f", loc.latitude, loc.longitude))
-                                .font(.subheadline)
-                        }
-                    } else {
-                        Button {
-                            locationService.requestPermission()
-                            locationService.getCurrentLocation()
-                        } label: {
-                            Label("Использовать текущее местоположение", systemImage: "location.circle")
-                        }
-                    }
-
-                    if let error = locationService.locationError {
-                        Text(error)
-                            .font(.caption)
-                            .foregroundStyle(.red)
-                    }
-                }
-
-                if let errorMessage {
-                    Section {
+                    // Error
+                    if let errorMessage {
                         Text(errorMessage)
-                            .foregroundStyle(.red)
                             .font(.caption)
+                            .foregroundStyle(.red)
+                            .padding(.horizontal)
                     }
+
+                    // Submit button
+                    Button {
+                        focusedField = nil
+                        submitListing()
+                    } label: {
+                        Group {
+                            if isSubmitting {
+                                ProgressView()
+                                    .tint(.white)
+                            } else {
+                                Text(isEditing ? "Сохранить изменения" : "Разместить объявление")
+                                    .font(.headline)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(isFormValid && !isSubmitting ? Color.matshareOrange : Color(.systemGray4))
+                        .foregroundStyle(.white)
+                        .cornerRadius(14)
+                    }
+                    .disabled(!isFormValid || isSubmitting)
+                    .padding(.horizontal)
+                    .padding(.bottom, 20)
                 }
+                .padding(.top, 16)
             }
+            .scrollDismissesKeyboard(.interactively)
+            .background(Color(.systemGroupedBackground))
             .navigationTitle(isEditing ? "Редактирование" : "Новое объявление")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Отмена") { dismiss() }
+                    Button("Отмена") {
+                        focusedField = nil
+                        if hasUnsavedChanges && !isEditing {
+                            showCancelConfirm = true
+                        } else {
+                            dismiss()
+                        }
+                    }
                 }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(isEditing ? "Сохранить" : "Разместить") { submitListing() }
-                        .fontWeight(.semibold)
-                        .disabled(!isFormValid || isSubmitting)
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Готово") {
+                        focusedField = nil
+                    }
+                    .fontWeight(.medium)
                 }
             }
-            .overlay {
-                if isSubmitting {
-                    Color.black.opacity(0.3)
-                        .ignoresSafeArea()
-                        .overlay { ProgressView(isEditing ? "Сохранение..." : "Публикация...").tint(.white) }
-                }
+            .confirmationDialog("Отменить создание?", isPresented: $showCancelConfirm, titleVisibility: .visible) {
+                Button("Удалить черновик", role: .destructive) { dismiss() }
+                Button("Продолжить редактирование", role: .cancel) { }
             }
             .alert(isEditing ? "Сохранено!" : "Опубликовано!", isPresented: $showSuccess) {
                 Button("OK") { dismiss() }
@@ -182,6 +223,74 @@ struct CreateListingView: View {
             }
         }
     }
+
+    // MARK: - Photo Section
+
+    private var photoSection: some View {
+        Group {
+            if let urlString = existingPhotoUrls.first {
+                ZStack(alignment: .topTrailing) {
+                    RemoteImage(url: URL(string: urlString))
+                        .frame(height: 180)
+                        .frame(maxWidth: .infinity)
+                        .cornerRadius(12)
+                        .clipped()
+                    Button {
+                        existingPhotoUrls.removeAll()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white, .black.opacity(0.5))
+                            .padding(8)
+                    }
+                }
+            } else if let image = photoImages.first {
+                ZStack(alignment: .topTrailing) {
+                    Image(uiImage: image)
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(height: 180)
+                        .frame(maxWidth: .infinity)
+                        .cornerRadius(12)
+                        .clipped()
+                    Button {
+                        photoImages.removeAll()
+                        selectedPhotos.removeAll()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white, .black.opacity(0.5))
+                            .padding(8)
+                    }
+                }
+            } else {
+                PhotosPicker(selection: $selectedPhotos, maxSelectionCount: 1, matching: .images) {
+                    VStack(spacing: 8) {
+                        Image(systemName: "camera.fill")
+                            .font(.title)
+                            .foregroundStyle(Color.matshareOrange)
+                        Text("Добавить фото")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(height: 180)
+                    .frame(maxWidth: .infinity)
+                    .background(Color(.secondarySystemGroupedBackground))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [8]))
+                            .foregroundStyle(Color(.systemGray3))
+                    )
+                }
+            }
+        }
+        .onChange(of: selectedPhotos) { items in
+            loadPhotos(items)
+        }
+    }
+
+    // MARK: - Logic
 
     private var isFormValid: Bool {
         !title.trimmingCharacters(in: .whitespaces).isEmpty &&
@@ -217,7 +326,6 @@ struct CreateListingView: View {
 
         Task {
             do {
-                // Keep existing photos + upload new ones
                 var photoUrls: [String] = existingPhotoUrls
                 if !photoImages.isEmpty, let userId = AuthService.shared.currentUserId {
                     for image in photoImages {
