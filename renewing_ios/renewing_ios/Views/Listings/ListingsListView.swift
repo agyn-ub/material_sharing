@@ -110,7 +110,7 @@ struct ListingsListView: View {
             .navigationTitle("MatShare")
             .searchable(text: $searchText, prompt: "Поиск по названию")
             .onSubmit(of: .search) { loadListings() }
-            .onChange(of: searchText) { newValue in
+            .onChange(of: searchText) { _, newValue in
                 if newValue.isEmpty { loadListings() }
             }
             .navigationDestination(for: Listing.self) { listing in
@@ -152,7 +152,7 @@ struct ListingsListView: View {
                     loadListings()
                 }
             }
-            .onChange(of: locationService.currentLocation) { location in
+            .onChange(of: locationService.currentLocation) { _, location in
                 if location != nil { loadListings() }
             }
             .onReceive(NotificationCenter.default.publisher(for: .listingCreated)) { _ in

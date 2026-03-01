@@ -24,7 +24,7 @@ struct ContentView: View {
                 await appState.loadProfile()
             }
         }
-        .onChange(of: authService.isAuthenticated) { isAuth in
+        .onChange(of: authService.isAuthenticated) { _, isAuth in
             if isAuth {
                 Task { await appState.loadProfile() }
             }

@@ -285,7 +285,7 @@ struct CreateListingView: View {
                 }
             }
         }
-        .onChange(of: selectedPhotos) { items in
+        .onChange(of: selectedPhotos) { _, items in
             loadPhotos(items)
         }
     }
