@@ -26,6 +26,7 @@ struct ContentView: View {
         }
         .onChange(of: authService.isAuthenticated) { _, isAuth in
             if isAuth {
+                selectedTab = 0
                 Task { await appState.loadProfile() }
             }
         }
