@@ -16,13 +16,13 @@ struct LoginView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 28) {
-                Spacer().frame(height: 40)
+            VStack(spacing: 24) {
+                Spacer().frame(height: 48)
 
                 // Branding
-                VStack(spacing: 12) {
+                VStack(spacing: 10) {
                     Image(systemName: "hammer.fill")
-                        .font(.system(size: 56))
+                        .font(.system(size: 52))
                         .foregroundStyle(Color.matshareOrange)
 
                     Text("MatShare")
@@ -34,65 +34,112 @@ struct LoginView: View {
                         .multilineTextAlignment(.center)
                 }
 
-                Spacer().frame(height: 8)
-
-                // Email/Password form
-                VStack(spacing: 12) {
-                    TextField("Email", text: $email)
-                        .focused($focusedField, equals: .email)
-                        .textContentType(.emailAddress)
-                        .keyboardType(.emailAddress)
-                        .autocorrectionDisabled()
-                        .textInputAutocapitalization(.never)
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .cornerRadius(12)
-
-                    SecureField("Пароль", text: $password)
-                        .focused($focusedField, equals: .password)
-                        .textContentType(isSignUp ? .newPassword : .password)
-                        .padding()
-                        .background(Color(.secondarySystemGroupedBackground))
-                        .cornerRadius(12)
-
+                // Tab switcher
+                HStack(spacing: 0) {
                     Button {
-                        focusedField = nil
-                        submitEmailAuth()
-                    } label: {
-                        Group {
-                            if isLoading {
-                                ProgressView().tint(.white)
-                            } else {
-                                Text(isSignUp ? "Зарегистрироваться" : "Войти")
-                                    .font(.headline)
-                            }
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(isEmailFormValid ? Color.matshareOrange : Color(.systemGray4))
-                        .foregroundStyle(.white)
-                        .cornerRadius(12)
-                    }
-                    .disabled(!isEmailFormValid || isLoading)
-
-                    Button {
-                        withAnimation { isSignUp.toggle() }
+                        isSignUp = false
                         errorMessage = nil
                     } label: {
-                        Text(isSignUp ? "Уже есть аккаунт? Войти" : "Нет аккаунта? Зарегистрироваться")
-                            .font(.subheadline)
-                            .foregroundStyle(Color.matshareOrange)
+                        Text("Вход")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
                     }
+                    .foregroundStyle(!isSignUp ? Color.matshareOrange : .secondary)
+
+                    Button {
+                        isSignUp = true
+                        errorMessage = nil
+                    } label: {
+                        Text("Регистрация")
+                            .font(.subheadline.weight(.medium))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 10)
+                    }
+                    .foregroundStyle(isSignUp ? Color.matshareOrange : .secondary)
                 }
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(10)
+                .overlay(
+                    // Underline indicator
+                    GeometryReader { geo in
+                        Color.matshareOrange
+                            .frame(width: geo.size.width / 2, height: 2)
+                            .offset(x: isSignUp ? geo.size.width / 2 : 0, y: geo.size.height - 2)
+                            .animation(.easeInOut(duration: 0.2), value: isSignUp)
+                    }
+                )
                 .padding(.horizontal, 32)
 
+                // Email/Password fields
+                VStack(spacing: 0) {
+                    HStack {
+                        Image(systemName: "envelope")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+                        TextField("Email", text: $email)
+                            .focused($focusedField, equals: .email)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .autocorrectionDisabled()
+                            .textInputAutocapitalization(.never)
+                    }
+                    .padding()
+
+                    Divider().padding(.leading, 52)
+
+                    HStack {
+                        Image(systemName: "lock")
+                            .foregroundStyle(.secondary)
+                            .frame(width: 20)
+                        SecureField(isSignUp ? "Пароль (мин. 6 символов)" : "Пароль", text: $password)
+                            .focused($focusedField, equals: .password)
+                            .textContentType(.password)
+                    }
+                    .padding()
+                }
+                .background(Color(.secondarySystemGroupedBackground))
+                .cornerRadius(12)
+                .padding(.horizontal, 32)
+
+                // Submit button
+                Button {
+                    focusedField = nil
+                    submitEmailAuth()
+                } label: {
+                    Group {
+                        if isLoading {
+                            ProgressView().tint(.white)
+                        } else {
+                            Text(isSignUp ? "Создать аккаунт" : "Войти")
+                                .font(.headline)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .background(isEmailFormValid ? Color.matshareOrange : Color(.systemGray4))
+                    .foregroundStyle(.white)
+                    .cornerRadius(12)
+                }
+                .disabled(!isEmailFormValid || isLoading)
+                .padding(.horizontal, 32)
+
+                // Error
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal, 32)
+                }
+
                 // Divider
-                HStack {
-                    Rectangle().frame(height: 0.5).foregroundStyle(Color(.systemGray3))
+                HStack(spacing: 12) {
+                    Rectangle().frame(height: 0.5).foregroundStyle(Color(.separator))
                     Text("или")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Rectangle().frame(height: 0.5).foregroundStyle(Color(.systemGray3))
+                        .foregroundStyle(.tertiary)
+                    Rectangle().frame(height: 0.5).foregroundStyle(Color(.separator))
                 }
                 .padding(.horizontal, 32)
 
@@ -110,17 +157,11 @@ struct LoginView: View {
                 .cornerRadius(12)
                 .padding(.horizontal, 32)
 
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                        .padding(.horizontal, 32)
-                }
-
-                Spacer().frame(height: 40)
+                Spacer().frame(height: 32)
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
     }
 
     private var isEmailFormValid: Bool {
