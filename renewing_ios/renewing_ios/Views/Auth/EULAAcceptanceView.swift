@@ -4,6 +4,7 @@ struct EULAAcceptanceView: View {
     @EnvironmentObject var appState: AppState
     @State private var accepted = false
     @State private var isLoading = false
+    @State private var errorMessage: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -44,6 +45,12 @@ struct EULAAcceptanceView: View {
                 }
                 .toggleStyle(.checkbox)
 
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+
                 Button {
                     acceptEULA()
                 } label: {
@@ -79,6 +86,7 @@ struct EULAAcceptanceView: View {
             do {
                 try await appState.acceptEULA()
             } catch {
+                errorMessage = error.localizedDescription
                 isLoading = false
             }
         }

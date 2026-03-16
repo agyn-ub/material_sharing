@@ -85,6 +85,9 @@ exports.upsertProfile = async (req, res) => {
     console.log('upsertProfile response:', JSON.stringify(result.rows[0]));
     res.json(result.rows[0]);
   } catch (err) {
+    if (err.code === '23503' && err.constraint === 'users_id_fkey') {
+      return res.status(401).json({ error: 'Auth user not found' });
+    }
     console.error('upsertProfile error:', err);
     res.status(500).json({ error: 'Internal server error' });
   }

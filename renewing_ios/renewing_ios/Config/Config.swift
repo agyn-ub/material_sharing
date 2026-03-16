@@ -2,8 +2,8 @@ import Foundation
 import Supabase
 
 let supabase = SupabaseClient(
-    supabaseURL: URL(string: "https://yborrqitngwfksrkpeij.supabase.co")!,
-    supabaseKey: "sb_publishable_-1QyUrEs0K1R4Nau_xlGSA_gW6UWHMv"
+    supabaseURL: URL(string: "https://ycerbilignjmtzkytyrn.supabase.co")!,
+    supabaseKey: "sb_publishable_Y7n4k2mtXblfEdzuhNr1ew_jCVWu8PF"
 )
 
 enum Config {

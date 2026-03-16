@@ -13,10 +13,10 @@ struct ContentView: View {
                 ProgressView()
             } else if !authService.isAuthenticated {
                 LoginView()
-            } else if appState.needsProfileSetup {
-                ProfileSetupView(appState: appState)
             } else if appState.needsEULAAcceptance {
                 EULAAcceptanceView()
+            } else if appState.needsProfileSetup {
+                ProfileSetupView(appState: appState)
             } else {
                 mainTabView
             }
