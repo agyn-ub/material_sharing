@@ -13,25 +13,56 @@ function formatListing(row) {
 
 exports.getNearby = async (req, res) => {
   try {
-    const { lat, lng, radius = 10000, search, limit = 50, offset = 0 } = req.query;
+    const { lat, lng, radius = 10000, search, limit = 50, offset = 0, global } = req.query;
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'lat and lng are required' });
     }
+
+    const parsedLimit = parseInt(limit);
+    const parsedOffset = parseInt(offset);
+    const isGlobalRequest = global === 'true';
+
+    // If explicitly global, query with NULL radius
+    const radiusParam = isGlobalRequest ? null : parseInt(radius);
 
     const result = await pool.query(
       'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6)',
       [
         parseFloat(lat),
         parseFloat(lng),
-        parseInt(radius),
+        radiusParam,
         search || null,
-        parseInt(limit),
-        parseInt(offset),
+        parsedLimit,
+        parsedOffset,
       ]
     );
 
-    res.json({ listings: result.rows.map(formatListing), total: result.rows.length });
+    // Fallback: if nearby returned 0 results on the first page, re-query globally
+    if (result.rows.length === 0 && !isGlobalRequest && parsedOffset === 0) {
+      const globalResult = await pool.query(
+        'SELECT * FROM search_listings_nearby($1, $2, $3, $4, $5, $6)',
+        [
+          parseFloat(lat),
+          parseFloat(lng),
+          null,
+          search || null,
+          parsedLimit,
+          0,
+        ]
+      );
+      return res.json({
+        listings: globalResult.rows.map(formatListing),
+        total: globalResult.rows.length,
+        is_global: true,
+      });
+    }
+
+    res.json({
+      listings: result.rows.map(formatListing),
+      total: result.rows.length,
+      is_global: isGlobalRequest,
+    });
   } catch (err) {
     console.error('getNearby error:', err);
     res.status(500).json({ error: 'Internal server error' });

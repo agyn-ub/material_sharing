@@ -12,6 +12,7 @@ struct ListingDetailView: View {
     @State private var showEditSheet = false
     @State private var showDeleteAlert = false
     @State private var isDeleting = false
+    @State private var showReportSheet = false
 
     private var isOwner: Bool {
         listing.userId == AuthService.shared.currentUserId
@@ -153,6 +154,14 @@ struct ListingDetailView: View {
                             .foregroundStyle(.red)
                     }
                 }
+            } else {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showReportSheet = true
+                    } label: {
+                        Image(systemName: "flag")
+                    }
+                }
             }
         }
         .sheet(isPresented: $showEditSheet) {
@@ -165,6 +174,9 @@ struct ListingDetailView: View {
             }
         } message: {
             Text("Это действие нельзя отменить.")
+        }
+        .sheet(isPresented: $showReportSheet) {
+            ReportListingView(listingId: listing.id)
         }
         .overlay {
             if isDeleting {

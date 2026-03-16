@@ -71,6 +71,12 @@ struct Listing: Codable, Identifiable, Hashable {
 struct ListingsResponse: Codable {
     let listings: [Listing]
     let total: Int?
+    let isGlobal: Bool?
+
+    enum CodingKeys: String, CodingKey {
+        case listings, total
+        case isGlobal = "is_global"
+    }
 }
 
 struct CreateListingRequest: Codable {

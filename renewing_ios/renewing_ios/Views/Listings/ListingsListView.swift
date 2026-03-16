@@ -12,12 +12,13 @@ struct ListingsListView: View {
     @State private var hasMore = true
     @State private var loadGeneration = 0
     @State private var hasLoadedOnce = false
+    @State private var isGlobalMode = false
     @State private var showMap = false
     @State private var mapListings: [Listing] = []
     @State private var isLoadingMapListings = false
     @State private var navigationPath = NavigationPath()
 
-    private let pageSize = 6
+    private let pageSize = 10
     private let mapPageSize = 50
 
     var body: some View {
@@ -74,6 +75,18 @@ struct ListingsListView: View {
                         } else {
                             ScrollView {
                                 LazyVStack(spacing: 8) {
+                                    if isGlobalMode {
+                                        HStack(spacing: 6) {
+                                            Image(systemName: "globe")
+                                                .font(.footnote)
+                                            Text("Рядом ничего не нашлось — показаны все объявления")
+                                                .font(.footnote)
+                                        }
+                                        .foregroundStyle(.secondary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 8)
+                                    }
                                     ForEach(listings) { listing in
                                         NavigationLink(value: listing) {
                                             ListingCardView(listing: listing)
@@ -176,12 +189,13 @@ struct ListingsListView: View {
         isLoading = true
         errorMessage = nil
         hasMore = true
+        isGlobalMode = false
         mapListings = []
         loadGeneration += 1
         let gen = loadGeneration
         Task {
             do {
-                let results = try await APIService.shared.fetchNearbyListings(
+                let response = try await APIService.shared.fetchNearbyListings(
                     lat: location.latitude,
                     lng: location.longitude,
                     radius: Int(searchRadius),
@@ -190,8 +204,9 @@ struct ListingsListView: View {
                     offset: 0
                 )
                 guard gen == loadGeneration else { return }
-                listings = results
-                hasMore = results.count == pageSize
+                listings = response.listings
+                isGlobalMode = response.isGlobal ?? false
+                hasMore = response.listings.count == pageSize
                 hasLoadedOnce = true
                 if showMap { loadMapListings() }
             } catch {
@@ -210,15 +225,16 @@ struct ListingsListView: View {
         isLoadingMapListings = true
         Task {
             do {
-                let results = try await APIService.shared.fetchNearbyListings(
+                let response = try await APIService.shared.fetchNearbyListings(
                     lat: location.latitude,
                     lng: location.longitude,
                     radius: Int(searchRadius),
                     search: searchText.isEmpty ? nil : searchText,
                     limit: mapPageSize,
-                    offset: 0
+                    offset: 0,
+                    global: isGlobalMode
                 )
-                mapListings = results
+                mapListings = response.listings
             } catch {
                 // Fall back to existing listings on error
             }
@@ -233,17 +249,18 @@ struct ListingsListView: View {
         let gen = loadGeneration
         Task {
             do {
-                let results = try await APIService.shared.fetchNearbyListings(
+                let response = try await APIService.shared.fetchNearbyListings(
                     lat: location.latitude,
                     lng: location.longitude,
                     radius: Int(searchRadius),
                     search: searchText.isEmpty ? nil : searchText,
                     limit: pageSize,
-                    offset: listings.count
+                    offset: listings.count,
+                    global: isGlobalMode
                 )
                 guard gen == loadGeneration else { return }
-                listings.append(contentsOf: results)
-                hasMore = results.count == pageSize
+                listings.append(contentsOf: response.listings)
+                hasMore = response.listings.count == pageSize
             } catch {
                 // Silent fail on pagination — user can pull to refresh
             }

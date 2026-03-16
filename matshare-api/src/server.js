@@ -6,6 +6,7 @@ const helmet = require('helmet');
 
 const listingsRoutes = require('./routes/listings');
 const usersRoutes = require('./routes/users');
+const reportsRoutes = require('./routes/reports');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -27,6 +28,7 @@ app.get('/health', (req, res) => {
 
 app.use('/api/listings', listingsRoutes);
 app.use('/api/users', usersRoutes);
+app.use('/api/reports', reportsRoutes);
 
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });

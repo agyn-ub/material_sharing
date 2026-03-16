@@ -24,8 +24,9 @@ class APIService {
         radius: Int = Config.defaultSearchRadiusMeters,
         search: String? = nil,
         limit: Int = 50,
-        offset: Int = 0
-    ) async throws -> [Listing] {
+        offset: Int = 0,
+        global: Bool = false
+    ) async throws -> ListingsResponse {
         var components = URLComponents(string: "\(baseURL)/listings/nearby")!
         components.queryItems = [
             URLQueryItem(name: "lat", value: "\(lat)"),
@@ -37,13 +38,15 @@ class APIService {
         if let search, !search.isEmpty {
             components.queryItems?.append(URLQueryItem(name: "search", value: search))
         }
+        if global {
+            components.queryItems?.append(URLQueryItem(name: "global", value: "true"))
+        }
 
         let request = try await authorizedRequest(url: components.url!)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
 
-        let decoded = try JSONDecoder().decode(ListingsResponse.self, from: data)
-        return decoded.listings
+        return try JSONDecoder().decode(ListingsResponse.self, from: data)
     }
 
     func fetchListing(id: String) async throws -> Listing {
@@ -99,14 +102,24 @@ class APIService {
 
     // MARK: - Users
 
-    func upsertProfile(name: String, phone: String?) async throws -> UserProfile {
+    func upsertProfile(name: String, phone: String?, eulaAccepted: Bool? = nil) async throws -> UserProfile {
         let url = URL(string: "\(baseURL)/users/profile")!
-        let profileReq = ProfileRequest(name: name, phone: phone, avatarUrl: nil)
+        let profileReq = ProfileRequest(name: name, phone: phone, avatarUrl: nil, eulaAccepted: eulaAccepted)
         let body = try JSONEncoder().encode(profileReq)
         let request = try await authorizedRequest(url: url, method: "POST", body: body)
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
         return try JSONDecoder().decode(UserProfile.self, from: data)
+    }
+
+    func reportListing(listingId: String, reason: String, comment: String?) async throws {
+        let url = URL(string: "\(baseURL)/reports")!
+        var payload: [String: String] = ["listing_id": listingId, "reason": reason]
+        if let comment { payload["comment"] = comment }
+        let body = try JSONEncoder().encode(payload)
+        let request = try await authorizedRequest(url: url, method: "POST", body: body)
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
     }
 
     func fetchProfile() async throws -> UserProfile {
@@ -115,6 +128,13 @@ class APIService {
         let (data, response) = try await URLSession.shared.data(for: request)
         try validateResponse(response)
         return try JSONDecoder().decode(UserProfile.self, from: data)
+    }
+
+    func deleteAccount() async throws {
+        let url = URL(string: "\(baseURL)/users/account")!
+        let request = try await authorizedRequest(url: url, method: "DELETE")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        try validateResponse(response)
     }
 
     // MARK: - Helpers

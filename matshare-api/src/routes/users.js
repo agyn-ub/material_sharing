@@ -6,5 +6,6 @@ const ctrl = require('../controllers/usersController');
 router.post('/profile', auth, ctrl.upsertProfile);
 router.get('/profile', auth, ctrl.getProfile);
 router.get('/:id/public', auth, ctrl.getPublicProfile);
+router.delete('/account', auth, ctrl.deleteAccount);
 
 module.exports = router;

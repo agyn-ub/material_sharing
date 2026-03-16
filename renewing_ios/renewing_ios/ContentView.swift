@@ -15,6 +15,8 @@ struct ContentView: View {
                 LoginView()
             } else if appState.needsProfileSetup {
                 ProfileSetupView(appState: appState)
+            } else if appState.needsEULAAcceptance {
+                EULAAcceptanceView()
             } else {
                 mainTabView
             }

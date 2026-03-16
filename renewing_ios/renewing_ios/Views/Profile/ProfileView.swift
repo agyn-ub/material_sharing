@@ -6,6 +6,8 @@ struct ProfileView: View {
     @State private var showEditPhone = false
     @State private var editName = ""
     @State private var editPhone = ""
+    @State private var showDeleteConfirmation = false
+    @State private var isDeleting = false
 
     var body: some View {
         NavigationStack {
@@ -45,6 +47,20 @@ struct ProfileView: View {
                     } label: {
                         Label("Выйти", systemImage: "arrow.right.square")
                     }
+
+                    Button(role: .destructive) {
+                        showDeleteConfirmation = true
+                    } label: {
+                        if isDeleting {
+                            HStack {
+                                ProgressView()
+                                Text("Удаление...")
+                            }
+                        } else {
+                            Label("Удалить аккаунт", systemImage: "trash")
+                        }
+                    }
+                    .disabled(isDeleting)
                 }
             }
             .navigationTitle("Профиль")
@@ -60,6 +76,23 @@ struct ProfileView: View {
                     }
                 }
                 Button("Отмена", role: .cancel) {}
+            }
+            .alert("Удалить аккаунт?", isPresented: $showDeleteConfirmation) {
+                Button("Удалить", role: .destructive) {
+                    Task {
+                        isDeleting = true
+                        do {
+                            try await APIService.shared.deleteAccount()
+                            try? await AuthService.shared.signOut()
+                        } catch {
+                            print("Delete account error: \(error)")
+                        }
+                        isDeleting = false
+                    }
+                }
+                Button("Отмена", role: .cancel) {}
+            } message: {
+                Text("Все ваши данные, объявления и фотографии будут удалены безвозвратно.")
             }
         }
     }
